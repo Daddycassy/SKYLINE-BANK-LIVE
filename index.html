@@ -339,7 +339,7 @@
       <div class="tile"><div class="step-n">STEP 05</div><h3>Perk catalogue</h3><p class="sub">Pick a perk from the catalogue (17 perks from the report). The ID and price fill in automatically.</p><label>Perk</label><select id="pName"></select>
         <div class="row"><div><label>Perk ID</label><input id="pId" type="number" value="1"></div><div><label>Miles</label><input id="pCost" type="number" value="200"></div></div>
         <div class="actions"><button class="btn-mint" id="perkBtn">Save</button><button class="btn-line" id="perkOffBtn">Switch off</button><button class="btn-line btn-small" id="perkAllBtn">Add all 17 perks</button></div></div>
-      <div class="tile"><div class="step-n">STEP 06</div><h3>Certificate artwork</h3><p class="sub">Link a certificate to its NFT metadata on IPFS.</p><label>Certificate number</label><input id="uId" type="number" placeholder="1"><label>Metadata URI</label><input id="uUri" placeholder="ipfs://CID/0001.json"><div class="actions"><button class="btn-navy" id="uriBtn">Set token URI</button></div></div>
+      <div class="tile"><div class="step-n">STEP 06</div><h3>Certificate artwork</h3><p class="sub">Makes the certificates show their picture in MetaMask. Do this once after deploying.</p><label>Artwork folder</label><input id="artBase"><div class="actions"><button class="btn-mint" id="planArtBtn">Link artwork for all 4 plans</button></div><p class="note" style="margin-top:14px">Optional: one personalised file for a single certificate.</p><label>Certificate number</label><input id="uId" type="number" placeholder="1"><label>Metadata URI</label><input id="uUri" placeholder="ipfs://CID/0001.json"><div class="actions"><button class="btn-navy" id="uriBtn">Set token URI</button></div></div>
     </div>
     <div class="tile" style="margin-top:18px"><h3>Live ledger</h3><p class="sub">Every action is a public record on Sepolia.</p><div class="log" id="log"><p class="note">Loading…</p></div></div>
   </div>
@@ -367,6 +367,7 @@ const CERT_ABI = [
   "function issue(address to, uint256 depositRef, uint16 termMonths, uint64 maturityDate) returns (uint256)",
   "function mature(uint256 tokenId)",
   "function setTokenURI(uint256 tokenId, string uri)",
+  "function setPlanURI(uint16 termMonths, string uri)",
   "event CertificateIssued(uint256 indexed tokenId, address indexed holder, uint16 termMonths, uint64 maturityDate)",
   "event CertificateMatured(uint256 indexed tokenId, address indexed holder, uint16 termMonths)"
 ];
@@ -602,6 +603,16 @@ $("perkAllBtn").onclick = async () => {
 };
 $("perkBtn").onclick = () => send(() => tokenW.setPerk($("pId").value, $("pName").value, $("pCost").value, true), "Perk saved.");
 $("perkOffBtn").onclick = () => send(() => tokenW.setPerk($("pId").value, $("pName").value, $("pCost").value || 1, false), "Perk switched off.");
+$("artBase").value = "https://daddycassy.github.io/skyline-bank/";
+$("planArtBtn").onclick = async () => {
+  if (!signer) return toast("Connect the bank wallet first.");
+  const base = $("artBase").value.trim().replace(/\/?$/, "/");
+  for (const t of [6, 12, 24, 36]) {
+    try { toast(`Plan ${t} months: confirm in MetaMask…`, 30000); const tx = await certW.setPlanURI(t, base + t + ".json"); await tx.wait(); }
+    catch (e) { return toast("✖ Stopped at the " + t + "-month plan: " + errMsg(e), 9000); }
+  }
+  toast("✔ Artwork linked for all 4 plans. In MetaMask, refresh the NFT to see it.", 9000);
+};
 $("uriBtn").onclick = () => { const id = $("uId").value, u = $("uUri").value.trim(); if (!id || !u) return toast("Enter a certificate number and URI."); send(() => certW.setTokenURI(id, u), "Artwork linked."); };
 
 // public verification
